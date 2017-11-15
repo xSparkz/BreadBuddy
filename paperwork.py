@@ -16,8 +16,11 @@ __author__ = 'xSp4rkz'
 # along with Bread Buddy.  If not, see <http://www.gnu.org/licenses/>.
 
 import re # Regular Expression Support
-import sqlite3
+import sqlite3 # Database support
+import os # Directory and File operations
 from common import CreateFolder
+from PyQt4 import QtCore # GUI Support
+from PyQt4 import QtGui # GUI Support
 
 DATABASE_PAPERWORK = '/home/xsparkz/paperwork/paperwork.sqlite'
 
@@ -57,17 +60,20 @@ class DataBase():
                 id INTEGER PRIMARY KEY,
                 date TEXT, 
                 time TEXT,
-                document BLOB)
+                route_number TEXT,
+                document_title TEXT,
+                document BLOB UNIQUE)
                 ;''')
 
         self.__Cursor.execute('''CREATE TABLE IF NOT EXISTS invoices (
                 id INTEGER PRIMARY KEY,
                 date TEXT, 
-                time TEXT, 
+                time TEXT,
+                route_number TEXT,
                 invoice_number TEXT, 
                 customer_number TEXT, 
                 customer_name TEXT, 
-                document BLOB)
+                document BLOB UNIQUE)
                 ;''')
 
         self.CommitChanges()
@@ -82,23 +88,47 @@ class DataBase():
 
             if Document.isInvoice():
 
-                self.__Cursor.execute('INSERT or IGNORE INTO invoices(id, date, time, invoice_number, customer_number, customer_name, document) VALUES(NULL,?,?,?,?,?,?)',
+                self.__Cursor.execute('''INSERT or IGNORE INTO invoices(id, date, time, route_number, invoice_number, customer_number, customer_name, document) VALUES(NULL,?,?,?,?,?,?,?)''',
                                       (Document.Date(),
                                        Document.Time(),
+                                       Document.RouteNumber(),
                                        Document.InvoiceNumber(),
                                        Document.CustomerNumber(),
                                        Document.CustomerName(),
                                        Document.DocumentToString()))
             else:
-                self.__Cursor.execute('INSERT INTO paperwork(id, date, time, document) VALUES(NULL,?,?,?)',
+                self.__Cursor.execute('''INSERT or IGNORE INTO paperwork(id, date, time, route_number, document_title, document) VALUES(NULL,?,?,?,?,?)''',
                                       (Document.Date(),
                                        Document.Time(),
+                                       Document.RouteNumber(),
+                                       Document.Title(),
                                        Document.DocumentToString()))
 
         self.CommitChanges()
 
+    def GetListOfRoutes(self):
+
+        self.__Cursor.execute('''SELECT DISTINCT route_number FROM paperwork''') # Grab a list of unique route numbers
+        return self.__Cursor.fetchall()
+
+    def GetCustomerList(self, RouteNumber):
+
+        self.__Cursor.execute('''SELECT DISTINCT customer_name FROM invoices WHERE route_number=?''', (RouteNumber,))  # Grab a list of unique route numbers
+        return self.__Cursor.fetchall()
+
+    def GetInvoices(self, RouteNumber):
+
+        self.__Cursor.execute('''SELECT date, time, invoice_number, customer_name FROM invoices WHERE route_number=?''', (RouteNumber,))  # Grab a list of paperwork for a specific route
+        return self.__Cursor.fetchall()
+
+    def GetListOfPaperwork(self, RouteNumber):
+
+        self.__Cursor.execute('''SELECT date, time, document_title FROM paperwork WHERE route_number=?''', (RouteNumber,))  # Grab a list of paperwork for a specific route
+        return self.__Cursor.fetchall()
+
     def Close(self):
         self.__Database.close()
+
 
 class Record():
 
@@ -108,6 +138,7 @@ class Record():
         self.__RouteNumber = None
         self.__Date = None
         self.__Time = None
+        self.__DocumentTitle = ''
         self.__Document = Document # Store the document
 
         # Invoice Traits
@@ -146,6 +177,10 @@ class Record():
 
         return self.__CustomerName
 
+    def Title(self):
+
+        return self.__DocumentTitle
+
     def Document(self):
 
         return self.__Document
@@ -162,7 +197,8 @@ class Record():
 
     def __IdentifyDocument(self):
 
-        ReadingCustomerName = False # Used to extract the customer number
+        ReadingCustomerName = False # Used to extract the customer name
+        LineNumber = 0 # Keep track of what line number we're currently at
 
         for Line in self.__Document:
 
@@ -208,12 +244,61 @@ class Record():
                 self.__CustomerNumber = Search.group(1)
                 ReadingCustomerName = True
 
+        # Second Pass - to extract document title if its not an invoice
+        if self.__isInvoice == False:
+
+            LineNumber = 0  # Keep track of the line number we are currently at
+
+            for Line in self.__Document:
+
+                LineNumber += 1 # Increase the line number count
+
+                if LineNumber > 2: # The first 2 lines are the header of the document so make sure we are looking past that for the document title
+
+                    TempLine = str(Line).strip() # Remove white space from the current line
+
+                    if len(TempLine) > 2: # If we still have characters in the line after stripping the whitespace then we are probably looking at the document title
+
+                        self.__DocumentTitle = TempLine # Save the document title
+                        break # Stop the loop since we found the title
+
+
 class PaperWork():
 
-    def __init__(self):
+    def __init__(self, MainWindow):
 
         self.__SplitLines = None # Store the lines that were split
         self.__NumberOfFixes = 0 # Keep track of the amount of lines that were fixed
+
+        self.__MainWindow = MainWindow  # Set a reference to the Main Window so we can manipulate it from here
+
+        # Controls -------------------------
+        self.__MainWindow.datePaperworkFrom.setDate(QtCore.QDate.currentDate())
+        self.__MainWindow.datePaperworkTo.setDate(QtCore.QDate.currentDate())
+        self.__MainWindow.datePaperworkTo.setMinimumDate(QtCore.QDate.currentDate())  # Date cannot be sooner than the from date
+
+        # Table - Paperwork -----------------
+        TableHeader = self.__MainWindow.tableInvoices.horizontalHeader()
+        TableHeader.setResizeMode(0, QtGui.QHeaderView.ResizeToContents)
+        TableHeader.setResizeMode(1, QtGui.QHeaderView.ResizeToContents)
+        TableHeader.setResizeMode(2, QtGui.QHeaderView.ResizeToContents)
+        TableHeader.setResizeMode(3, QtGui.QHeaderView.Stretch)
+
+        # Table - Invoices -----------------
+        TableHeader = self.__MainWindow.tablePaperwork.horizontalHeader()
+        TableHeader.setResizeMode(0, QtGui.QHeaderView.ResizeToContents)
+        TableHeader.setResizeMode(1, QtGui.QHeaderView.ResizeToContents)
+        TableHeader.setResizeMode(2, QtGui.QHeaderView.Stretch)
+
+        # Events Handlers ------------------
+        self.__MainWindow.btnPaperworkRefresh.clicked.connect(self.__Button_Refresh_Clicked)
+        self.__MainWindow.btnPaperworkDownload.clicked.connect(self.__Button_Download_Clicked)
+        self.__MainWindow.comboRouteNumber.currentIndexChanged.connect(self.__Combo_Route_Changed)
+        self.__MainWindow.datePaperworkFrom.dateChanged.connect(self.__Date_Paperwork_From_Changed)
+
+        # Database Handlers ----------------
+        self.__Database = DataBase()
+        self.__Database.Connect()
 
     @staticmethod
     def __FixLine(LineToFix, SplitToken):
@@ -235,9 +320,9 @@ class PaperWork():
 
         return FixedList # Return the new fixed list
 
-    def Fix(self, Filename):
+    def __Fix(self, Filename):
 
-        TempFile = open('/home/xsparkz/test.txt', 'w') # Temp file used to save the new changes
+        Document = [] # Create a new document list to store the fixed file
 
         with open(Filename, 'r') as LinesFromFile:
 
@@ -263,51 +348,120 @@ class PaperWork():
 
                 if self.__SplitLines != None: # Did we end up fixing a line?
 
-                    TempFile.write(self.__SplitLines[0])  # Write line 1
-                    TempFile.write(self.__SplitLines[1])  # Write line 2
+                    Document.append(self.__SplitLines[0])  # Write line 1
+                    Document.append(self.__SplitLines[1])  # Write line 2
 
                     continue # Start at beginning
 
-                TempFile.write(Line) # Write the line as is without any changes
+                Document.append(Line) # Write the line as is without any changes
 
-        TempFile.close() # Close the temp file
-
-        print str(self.__NumberOfFixes) + ' lines *fixed*'
+        return Document # Return the fixed document
 
     def Parse(self, Filename):
 
-        with open(Filename, 'r') as LinesFromFile:
+        LinesFromFile = self.__Fix(Filename) # Store the file as a list after it's been fixed
 
-            Document = [] # Create a new list to store the parsed document before saving
-            Documents = [] # Create a list to store all of the parsed documents
+        Document = [] # Create a new list to store the parsed document before saving
+        Documents = [] # Create a list to store all of the parsed documents
 
-            for Line in LinesFromFile:  # Run through every line in the file
+        for Line in LinesFromFile:  # Run through every line in the file
 
-                if re.search(REGEX_INLINE_DATETIME, Line) != None:  # Found a new document header
+            if re.search(REGEX_INLINE_DATETIME, Line) != None:  # Found a new document header
 
-                    if len(Document) > 0: # If the document isn't empty then save the existing document to start another
+                if len(Document) > 0: # If the document isn't empty then save the existing document to start another
 
-                        Documents.append(Record(self.__RemoveBlankLinesAtEndOfList(Document))) # Add the document to the list of documents after removing the blank lines at the end of the document
-                        Document = [] # Clear the current document
+                    Documents.append(Record(self.__RemoveBlankLinesAtEndOfList(Document))) # Add the document to the list of documents after removing the blank lines at the end of the document
+                    Document = [] # Clear the current document
 
-                Document.append(Line) # Add the current line to the current document
+            Document.append(Line) # Add the current line to the current document
 
-            if len(Document) > 0: # Check to make sure the document is empty, if its not then add it to the documents list
+        if len(Document) > 0: # Check to make sure the document is empty, if its not then add it to the documents list
 
-                Documents.append(Record(self.__RemoveBlankLinesAtEndOfList(Document)))  # Add the document to the list of documents after removing the blank lines at the end of the document
+            Documents.append(Record(self.__RemoveBlankLinesAtEndOfList(Document)))  # Add the document to the list of documents after removing the blank lines at the end of the document
 
-            print len(Documents)
+        # Save the documents to individual files
+        FileNum = 0
+        TempFolder = '/home/xsparkz/paperwork/handheld/'
+        CreateFolder(TempFolder) # Make sure it exists. Create it if not
 
-            # Save the documents to individual files
-            FileNum = 0
-            TempFolder = '/home/xsparkz/paperwork/handheld/'
-            CreateFolder(TempFolder) # Make sure it exists. Create it if not
+        self.__Database.AddDocuments(Documents)
 
-            Db = DataBase()
-            Db.Connect()
-            Db.AddDocuments(Documents)
+    def SortFilesFromDirectory(self, DirectoryToSort):
 
-PaperWork = PaperWork()
+        for file in os.listdir("/mydir"):
+            if file.endswith(".txt"):
+                print(os.path.join("/mydir", file))
 
-PaperWork.Fix('/home/xsparkz/PycharmProjects/BreadBuddy/txt/HandheldPaperwork 206285 PETERCECCANESE 21.txt')
-PaperWork.Parse('/home/xsparkz/test.txt')
+    def __Button_Refresh_Clicked(self):
+
+        self.__MainWindow.comboRouteNumber.clear()
+
+        for Route in self.__Database.GetListOfRoutes():
+
+            self.__MainWindow.comboRouteNumber.addItem(QtCore.QString(Route[0])) # Add route number to list of routes
+
+    def __Button_Download_Clicked(self):
+         
+        self.Parse('/home/xsparkz/PycharmProjects/BreadBuddy/txt/paperwork.txt')
+
+    def __Date_Paperwork_From_Changed(self, Date):
+
+        self.__MainWindow.datePaperworkTo.setMinimumDate(Date)  # Date cannot be sooner than the from date
+        self.__MainWindow.datePaperworkTo.setDate(Date) # Set the (to) date to the same date as the from date
+
+    def __Combo_Route_Changed(self):
+
+        RouteNumber = str(self.__MainWindow.comboRouteNumber.itemText(self.__MainWindow.comboRouteNumber.currentIndex()))
+        Customers = self.__Database.GetCustomerList(RouteNumber)
+
+        self.__MainWindow.comboCustomers.clear()
+        self.__MainWindow.comboCustomers.addItem(QtCore.QString('All Customers'))
+
+        for Customer in Customers:
+
+            self.__MainWindow.comboCustomers.addItem(QtCore.QString(Customer[0]))
+
+        PaperWork = self.__Database.GetListOfPaperwork(RouteNumber)
+        self.__MainWindow.tablePaperwork.clear() # Clear the contents of the table
+        self.__MainWindow.tablePaperwork.setRowCount(0) # Remove the left over rows
+
+        for Document in PaperWork:
+
+            rowPosition = self.__MainWindow.tablePaperwork.rowCount() # Grab last row
+            self.__MainWindow.tablePaperwork.insertRow(rowPosition) # Insert a new empty row after the last
+            self.__MainWindow.tablePaperwork.setItem(rowPosition, 0, QtGui.QTableWidgetItem(Document[0])) # Date
+            self.__MainWindow.tablePaperwork.setItem(rowPosition, 1, QtGui.QTableWidgetItem(Document[1])) # Time
+            self.__MainWindow.tablePaperwork.setItem(rowPosition, 2, QtGui.QTableWidgetItem(Document[2])) # Customer Name
+
+        self.__MainWindow.tablePaperwork.removeRow(0) # Remove the first empty row
+
+        Headers = QtCore.QStringList() # Create a new header
+        Headers.append(QtCore.QString('Date'))
+        Headers.append(QtCore.QString('Time'))
+        Headers.append(QtCore.QString('Document Title'))
+
+        self.__MainWindow.tablePaperwork.setHorizontalHeaderLabels(Headers)
+
+        Invoices = self.__Database.GetInvoices(RouteNumber)
+        self.__MainWindow.tableInvoices.clear()  # Clear the contents of the table
+        self.__MainWindow.tableInvoices.setRowCount(0)  # Remove the left over rows
+
+        for Document in Invoices:
+            rowPosition = self.__MainWindow.tableInvoices.rowCount()  # Grab last row
+            self.__MainWindow.tableInvoices.insertRow(rowPosition)  # Insert a new empty row after the last
+            self.__MainWindow.tableInvoices.setItem(rowPosition, 0, QtGui.QTableWidgetItem(Document[0]))  # Date
+            self.__MainWindow.tableInvoices.setItem(rowPosition, 1, QtGui.QTableWidgetItem(Document[1]))  # Time
+            self.__MainWindow.tableInvoices.setItem(rowPosition, 2, QtGui.QTableWidgetItem(Document[2]))  # Customer Name
+            self.__MainWindow.tableInvoices.setItem(rowPosition, 3, QtGui.QTableWidgetItem(Document[3]))  # Invoice #
+
+        self.__MainWindow.tableInvoices.removeRow(0)  # Remove the first empty row
+
+        Headers = QtCore.QStringList()  # Create a new header
+        Headers.append(QtCore.QString('Date'))
+        Headers.append(QtCore.QString('Time'))
+        Headers.append(QtCore.QString('Invoice #'))
+        Headers.append(QtCore.QString('Customer'))
+
+        self.__MainWindow.tableInvoices.setHorizontalHeaderLabels(Headers)
+
+

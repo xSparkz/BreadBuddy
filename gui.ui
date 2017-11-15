@@ -203,7 +203,7 @@
         <rect>
          <x>10</x>
          <y>70</y>
-         <width>221</width>
+         <width>211</width>
          <height>33</height>
         </rect>
        </property>
@@ -216,9 +216,9 @@
       <widget class="QPushButton" name="btnForget">
        <property name="geometry">
         <rect>
-         <x>240</x>
+         <x>230</x>
          <y>70</y>
-         <width>71</width>
+         <width>81</width>
          <height>31</height>
         </rect>
        </property>
@@ -229,6 +229,10 @@
        </property>
        <property name="text">
         <string>Forget</string>
+       </property>
+       <property name="icon">
+        <iconset>
+         <normaloff>images/icons/16x16/delete-arrow.png</normaloff>images/icons/16x16/delete-arrow.png</iconset>
        </property>
       </widget>
       <widget class="QCheckBox" name="checkboxRememberAccount">
@@ -391,7 +395,7 @@
      <attribute name="title">
       <string>Handheld Paperwork</string>
      </attribute>
-     <widget class="QDateEdit" name="dateEdit">
+     <widget class="QDateEdit" name="datePaperworkFrom">
       <property name="geometry">
        <rect>
         <x>100</x>
@@ -453,7 +457,7 @@
        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
       </property>
      </widget>
-     <widget class="QComboBox" name="comboBox">
+     <widget class="QComboBox" name="comboRouteNumber">
       <property name="geometry">
        <rect>
         <x>100</x>
@@ -463,7 +467,7 @@
        </rect>
       </property>
      </widget>
-     <widget class="QDateEdit" name="dateEdit_2">
+     <widget class="QDateEdit" name="datePaperworkTo">
       <property name="geometry">
        <rect>
         <x>350</x>
@@ -502,12 +506,12 @@
        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
       </property>
      </widget>
-     <widget class="QComboBox" name="comboBox_2">
+     <widget class="QComboBox" name="comboCustomers">
       <property name="geometry">
        <rect>
         <x>350</x>
         <y>40</y>
-        <width>371</width>
+        <width>251</width>
         <height>33</height>
        </rect>
       </property>
@@ -535,7 +539,7 @@
        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
       </property>
      </widget>
-     <widget class="QPushButton" name="btnDownloadPaperwork">
+     <widget class="QPushButton" name="btnPaperworkDownload">
       <property name="geometry">
        <rect>
         <x>610</x>
@@ -547,8 +551,12 @@
       <property name="text">
        <string>Download</string>
       </property>
+      <property name="icon">
+       <iconset>
+        <normaloff>images/icons/16x16/download.png</normaloff>images/icons/16x16/download.png</iconset>
+      </property>
      </widget>
-     <widget class="QPushButton" name="btnRefreshPaperWork">
+     <widget class="QPushButton" name="btnPaperworkRefresh">
       <property name="geometry">
        <rect>
         <x>500</x>
@@ -560,51 +568,134 @@
       <property name="text">
        <string>Refresh</string>
       </property>
+      <property name="icon">
+       <iconset>
+        <normaloff>images/icons/16x16/refresh.png</normaloff>images/icons/16x16/refresh.png</iconset>
+      </property>
      </widget>
-     <widget class="QTreeWidget" name="treeWidget">
+     <widget class="QTableWidget" name="tableInvoices">
       <property name="geometry">
        <rect>
         <x>10</x>
-        <y>80</y>
+        <y>90</y>
         <width>711</width>
-        <height>271</height>
+        <height>141</height>
        </rect>
       </property>
+      <property name="editTriggers">
+       <set>QAbstractItemView::NoEditTriggers</set>
+      </property>
+      <property name="alternatingRowColors">
+       <bool>true</bool>
+      </property>
+      <property name="selectionBehavior">
+       <enum>QAbstractItemView::SelectRows</enum>
+      </property>
+      <property name="gridStyle">
+       <enum>Qt::SolidLine</enum>
+      </property>
+      <attribute name="horizontalHeaderCascadingSectionResizes">
+       <bool>false</bool>
+      </attribute>
+      <attribute name="horizontalHeaderShowSortIndicator" stdset="0">
+       <bool>false</bool>
+      </attribute>
+      <attribute name="horizontalHeaderStretchLastSection">
+       <bool>true</bool>
+      </attribute>
+      <attribute name="verticalHeaderVisible">
+       <bool>false</bool>
+      </attribute>
+      <attribute name="verticalHeaderCascadingSectionResizes">
+       <bool>false</bool>
+      </attribute>
+      <row>
+       <property name="text">
+        <string>Record</string>
+       </property>
+      </row>
       <column>
        <property name="text">
-        <string>Paperwork</string>
+        <string>Date</string>
        </property>
       </column>
-      <item>
+      <column>
        <property name="text">
-        <string>206290</string>
+        <string>Time</string>
        </property>
-       <item>
-        <property name="text">
-         <string>10/10/2017</string>
-        </property>
-        <item>
-         <property name="text">
-          <string>Invoices</string>
-         </property>
-         <item>
-          <property name="text">
-           <string>00022130 YIG</string>
-          </property>
-         </item>
-        </item>
-        <item>
-         <property name="text">
-          <string>Paperwork</string>
-         </property>
-         <item>
-          <property name="text">
-           <string>Load Adjustment Report</string>
-          </property>
-         </item>
-        </item>
-       </item>
-      </item>
+      </column>
+      <column>
+       <property name="text">
+        <string>Customer</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>Invoice Number</string>
+       </property>
+      </column>
+     </widget>
+     <widget class="QTableWidget" name="tablePaperwork">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>240</y>
+        <width>711</width>
+        <height>111</height>
+       </rect>
+      </property>
+      <property name="editTriggers">
+       <set>QAbstractItemView::NoEditTriggers</set>
+      </property>
+      <property name="alternatingRowColors">
+       <bool>true</bool>
+      </property>
+      <property name="selectionBehavior">
+       <enum>QAbstractItemView::SelectRows</enum>
+      </property>
+      <attribute name="horizontalHeaderStretchLastSection">
+       <bool>true</bool>
+      </attribute>
+      <attribute name="verticalHeaderVisible">
+       <bool>false</bool>
+      </attribute>
+      <row>
+       <property name="text">
+        <string>Record</string>
+       </property>
+      </row>
+      <column>
+       <property name="text">
+        <string>Date</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>Time</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>Document Title</string>
+       </property>
+      </column>
+     </widget>
+     <widget class="QPushButton" name="btnPaperworkFind">
+      <property name="geometry">
+       <rect>
+        <x>610</x>
+        <y>40</y>
+        <width>111</width>
+        <height>27</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Find</string>
+      </property>
+      <property name="icon">
+       <iconset>
+        <normaloff>images/icons/16x16/magnifier.png</normaloff>images/icons/16x16/magnifier.png</iconset>
+      </property>
      </widget>
     </widget>
     <widget class="QWidget" name="tabPrint">

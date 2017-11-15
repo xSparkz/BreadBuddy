@@ -24,6 +24,11 @@ class Passwords():
         self.__MainWindow = MainWindow # Set a reference to the Main Window so we can manipulate it from here
         self.__Passwords = Settings('config/passwords.yml')  # Load the passwords file
 
+        # Events Handlers ------------------
+        self.__MainWindow.btnLogin.clicked.connect(self.__Button_Login_Clicked)
+        self.__MainWindow.btnForget.clicked.connect(self.__Button_Forget_Clicked)
+        self.__MainWindow.comboAccounts.currentIndexChanged.connect(self.__Combo_SelectItem_Accounts)
+
     def LoadPasswords(self):
         self.__MainWindow.comboAccounts.clear()  # Clear all stored user names from the drop down box
 
@@ -37,19 +42,24 @@ class Passwords():
         self.__MainWindow.txtPassword.setText(UserNames[str(self.__MainWindow.comboAccounts.currentText())])
 
 
-    def Combo_SelectItem_Accounts(self):
-        Username = str(self.__MainWindow.comboAccounts.currentText())
+    def __Combo_SelectItem_Accounts(self):
 
-        self.__MainWindow.txtUsername.setText(Username)
-        self.__MainWindow.txtPassword.setText(self.__Passwords.Read(Username))
+        try:
+            Username = str(self.__MainWindow.comboAccounts.currentText())
+
+            self.__MainWindow.txtUsername.setText(Username)
+            self.__MainWindow.txtPassword.setText(self.__Passwords.Read(Username))
+
+        except:
+            pass
 
 
-    def Button_Forget_Clicked(self):
+    def __Button_Forget_Clicked(self):
         self.__Passwords.Remove(str(self.__MainWindow.comboAccounts.currentText()))
         self.LoadPasswords()
 
 
-    def Button_Login_Clicked(self):
+    def __Button_Login_Clicked(self):
         UserName = str(self.__MainWindow.txtUsername.text())  # Store username from textbox
         Password = str(self.__MainWindow.txtPassword.text())  # Store password from textbox
 

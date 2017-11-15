@@ -17,6 +17,7 @@ __author__ = 'xSp4rkz'
 
 import re # Regular Expression Support
 import os # Operating System File Support
+from PyQt4.QtGui import QMessageBox
 
 # URL's
 URL_LOGIN = 'https://orders.westonfoods.ca/edistributor/'

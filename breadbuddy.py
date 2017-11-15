@@ -22,6 +22,7 @@ from PyQt4.QtCore import QObject # Used to work with Gui Objects
 import os # Used to manipulate files and folders
 from settings import Settings
 import passwords
+import paperwork
 
 class BreadBuddyGui(QtGui.QMainWindow, gui.Ui_MainWindow):
 
@@ -45,10 +46,8 @@ class Application(QObject):
         self.Passwords = passwords.Passwords(self.MainWindow)
         self.Passwords.LoadPasswords() # Load all the Usernames into the drop down box
 
-        # Events Handlers ------------------
-        self.MainWindow.btnLogin.clicked.connect(self.Passwords.Button_Login_Clicked)
-        self.MainWindow.btnForget.clicked.connect(self.Passwords.Button_Forget_Clicked)
-        self.MainWindow.comboAccounts.currentIndexChanged.connect(self.Passwords.Combo_SelectItem_Accounts)
+        # Connect to Paperwork Module
+        self.Paperwork = paperwork.PaperWork(self.MainWindow)
 
     def Run(self):
 
